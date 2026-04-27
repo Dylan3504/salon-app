@@ -1,36 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Salon
 
-## Getting Started
+App full-stack para una agenda de salon de belleza.
 
-First, run the development server:
+## Como funciona
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+La app tiene tres partes:
+
+- Frontend: React muestra la agenda y captura el formulario.
+- Backend/API: rutas de Next.js reciben peticiones HTTP.
+- Base de datos: PostgreSQL guarda clientes, servicios y citas.
+
+Flujo principal:
+
+```text
+Formulario -> /api/appointments -> PostgreSQL -> /api/dashboard -> Pantalla
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Disco D
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+El proyecto esta preparado para trabajar en `D:\salon`:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- dependencias en `D:\salon\node_modules`
+- cache npm en `D:\salon\.npm-cache`
+- temporales de scripts en `D:\salon\.tmp`
 
-## Learn More
+## Configurar PostgreSQL
 
-To learn more about Next.js, take a look at the following resources:
+1. Crea una base de datos llamada `salon` en PostgreSQL.
+2. Copia `.env.example` a `.env`.
+3. Ajusta `DATABASE_URL` con tu usuario, password, host, puerto y base.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Ejemplo:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```env
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/salon"
+```
 
-## Deploy on Vercel
+La app crea las tablas automaticamente al consultar la API. Tambien deje el SQL en `database/schema.sql` para estudiarlo.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Ejecutar
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```powershell
+npm.cmd run dev
+```
+
+Luego abre:
+
+```text
+http://localhost:3000
+```
