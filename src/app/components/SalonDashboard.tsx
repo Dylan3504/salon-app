@@ -73,6 +73,7 @@ export function SalonDashboard() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
 
   async function loadDashboard(signal?: AbortSignal) {
     try {
@@ -92,7 +93,10 @@ export function SalonDashboard() {
     }
   }
 
-  async function updateAppointmentStatus(id: number, status: "COMPLETED" | "CANCELLED") {
+  async function updateAppointmentStatus(
+    id: number,
+    status: "SCHEDULED" | "COMPLETED" | "CANCELLED",
+  ) {
     try {
       const response = await fetch(`/api/appointments/${id}`, {
         method: "PATCH",
@@ -105,6 +109,35 @@ export function SalonDashboard() {
 
       if (!response.ok) {
         throw new Error(payload.message ?? "No se pudo actualizar la cita.");
+      }
+
+      await loadDashboard();
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : "Error inesperado.");
+    }
+  }
+
+  async function deleteCustomer(id: number) {
+    const shouldDelete = window.confirm(
+      "Esta accion elimina el cliente si no tiene citas. Deseas continuar?",
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/customers/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const payload = await response.json();
+        throw new Error(payload.message ?? "No se pudo eliminar el cliente.");
+      }
+
+      if (editingCustomer?.id === id) {
+        setEditingCustomer(null);
       }
 
       await loadDashboard();
@@ -243,6 +276,15 @@ export function SalonDashboard() {
                         Cancelar
                       </button>
                     ) : null}
+                    {appointment.status === "CANCELLED" ? (
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => updateAppointmentStatus(appointment.id, "SCHEDULED")}
+                      >
+                        Reactivar
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       className="danger-button"
@@ -261,10 +303,22 @@ export function SalonDashboard() {
       <section className="management-grid">
         <div className="panel">
           <div className="panel-heading">
-            <h2>Nuevo cliente</h2>
-            <p>Guarda clientes en PostgreSQL para usarlos al agendar.</p>
+            <h2>{editingCustomer ? "Editar cliente" : "Nuevo cliente"}</h2>
+            <p>
+              {editingCustomer
+                ? "Corrige los datos guardados en PostgreSQL."
+                : "Guarda clientes en PostgreSQL para usarlos al agendar."}
+            </p>
           </div>
-          <CustomerForm onSaved={loadDashboard} />
+          <CustomerForm
+            key={editingCustomer?.id ?? "new-customer"}
+            customer={editingCustomer}
+            onCancelEdit={() => setEditingCustomer(null)}
+            onSaved={async () => {
+              setEditingCustomer(null);
+              await loadDashboard();
+            }}
+          />
         </div>
 
         <div className="panel">
@@ -280,6 +334,22 @@ export function SalonDashboard() {
                   <p>{customer.phone}</p>
                 </div>
                 {customer.notes ? <span>{customer.notes}</span> : null}
+                <div className="customer-actions">
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => setEditingCustomer(customer)}
+                  >
+                    Editar
+                  </button>
+                  <button
+                    type="button"
+                    className="danger-button"
+                    onClick={() => deleteCustomer(customer.id)}
+                  >
+                    Eliminar
+                  </button>
+                </div>
               </article>
             ))}
           </div>

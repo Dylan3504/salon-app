@@ -2,24 +2,34 @@
 
 import { FormEvent, useState } from "react";
 
-type CustomerFormProps = {
-  onSaved: () => void;
+type Customer = {
+  id: number;
+  name: string;
+  phone: string;
+  notes: string | null;
 };
 
-export function CustomerForm({ onSaved }: CustomerFormProps) {
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [notes, setNotes] = useState("");
+type CustomerFormProps = {
+  onSaved: () => void;
+  customer?: Customer | null;
+  onCancelEdit?: () => void;
+};
+
+export function CustomerForm({ onSaved, customer, onCancelEdit }: CustomerFormProps) {
+  const [name, setName] = useState(customer?.name ?? "");
+  const [phone, setPhone] = useState(customer?.phone ?? "");
+  const [notes, setNotes] = useState(customer?.notes ?? "");
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const isEditing = Boolean(customer);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSaving(true);
     setError("");
 
-    const response = await fetch("/api/customers", {
-      method: "POST",
+    const response = await fetch(customer ? `/api/customers/${customer.id}` : "/api/customers", {
+      method: customer ? "PATCH" : "POST",
       headers: {
         "Content-Type": "application/json",
       },
@@ -75,9 +85,16 @@ export function CustomerForm({ onSaved }: CustomerFormProps) {
 
       {error ? <p className="form-error">{error}</p> : null}
 
-      <button type="submit" disabled={isSaving}>
-        {isSaving ? "Guardando..." : "Guardar cliente"}
-      </button>
+      <div className="form-actions">
+        <button type="submit" disabled={isSaving}>
+          {isSaving ? "Guardando..." : isEditing ? "Actualizar cliente" : "Guardar cliente"}
+        </button>
+        {isEditing ? (
+          <button type="button" className="secondary-button" onClick={onCancelEdit}>
+            Cancelar edicion
+          </button>
+        ) : null}
+      </div>
     </form>
   );
 }

@@ -34,6 +34,13 @@ export class AppointmentConflictError extends Error {
   }
 }
 
+export class CustomerHasAppointmentsError extends Error {
+  constructor() {
+    super("No se puede eliminar un cliente que ya tiene citas. Editalo o conserva su historial.");
+    this.name = "CustomerHasAppointmentsError";
+  }
+}
+
 type AppointmentRow = {
   id: number;
   starts_at: Date;
@@ -228,6 +235,50 @@ export async function createCustomer(input: {
   return result.rows[0];
 }
 
+export async function updateCustomer(
+  id: number,
+  input: {
+    name: string;
+    phone: string;
+    notes?: string | null;
+  },
+) {
+  await ensureSchema();
+
+  const result = await pool.query<Customer>(
+    `UPDATE customers
+    SET name = $2, phone = $3, notes = $4
+    WHERE id = $1
+    RETURNING id, name, phone, notes`,
+    [id, input.name, input.phone, input.notes ?? null],
+  );
+
+  if ((result.rowCount ?? 0) === 0) {
+    throw new Error("El cliente no existe.");
+  }
+
+  return result.rows[0];
+}
+
+export async function deleteCustomer(id: number) {
+  await ensureSchema();
+
+  const appointmentCount = await pool.query<{ count: string }>(
+    "SELECT COUNT(*) AS count FROM appointments WHERE customer_id = $1",
+    [id],
+  );
+
+  if (Number(appointmentCount.rows[0].count) > 0) {
+    throw new CustomerHasAppointmentsError();
+  }
+
+  const result = await pool.query("DELETE FROM customers WHERE id = $1", [id]);
+
+  if ((result.rowCount ?? 0) === 0) {
+    throw new Error("El cliente no existe.");
+  }
+}
+
 export async function listServices() {
   await ensureSchema();
 
@@ -350,6 +401,36 @@ export async function createAppointment(input: {
 
 export async function updateAppointmentStatus(id: number, status: "SCHEDULED" | "COMPLETED" | "CANCELLED") {
   await ensureSchema();
+
+  if (status === "SCHEDULED") {
+    const appointmentResult = await pool.query<{
+      id: number;
+      starts_at: Date;
+      duration_minutes: number;
+    }>(
+      `SELECT appointments.id, appointments.starts_at, services.duration_minutes
+      FROM appointments
+      INNER JOIN services ON services.id = appointments.service_id
+      WHERE appointments.id = $1`,
+      [id],
+    );
+
+    const appointment = appointmentResult.rows[0];
+
+    if (!appointment) {
+      throw new Error("La cita no existe.");
+    }
+
+    const hasConflict = await hasAppointmentConflict({
+      startsAt: appointment.starts_at.toISOString(),
+      durationMinutes: appointment.duration_minutes,
+      ignoreAppointmentId: id,
+    });
+
+    if (hasConflict) {
+      throw new AppointmentConflictError();
+    }
+  }
 
   const result = await pool.query<{ id: number }>(
     `UPDATE appointments
