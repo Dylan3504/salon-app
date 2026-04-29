@@ -1,18 +1,22 @@
 import { NextResponse } from "next/server";
-import { listAppointments, listCustomers, listServices } from "@/lib/db";
+import { listAppointments, listCustomers, listOffers, listServices, listWorks } from "@/lib/db";
 
 export async function GET() {
   try {
-    const [customers, services, appointments] = await Promise.all([
+    const [customers, services, appointments, works, offers] = await Promise.all([
       listCustomers(),
       listServices(),
       listAppointments(),
+      listWorks(),
+      listOffers(),
     ]);
 
     return NextResponse.json({
       customers,
       services,
       appointments,
+      works,
+      offers,
     });
   } catch (error) {
     return NextResponse.json(

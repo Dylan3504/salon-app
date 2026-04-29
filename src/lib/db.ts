@@ -27,6 +27,27 @@ export type Appointment = {
   service: Service;
 };
 
+export type Work = {
+  id: number;
+  title: string;
+  category: string;
+  customerName: string | null;
+  notes: string | null;
+  beforeImageUrl: string | null;
+  afterImageUrl: string | null;
+  completedAt: string | null;
+};
+
+export type Offer = {
+  id: number;
+  title: string;
+  description: string;
+  priceLabel: string;
+  startsOn: string | null;
+  endsOn: string | null;
+  isActive: boolean;
+};
+
 export class AppointmentConflictError extends Error {
   constructor() {
     super("Ya existe una cita activa que choca con ese horario.");
@@ -84,9 +105,7 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 async function ensureSchema() {
-  if (!globalForPg.salonSchemaReady) {
-    globalForPg.salonSchemaReady = setupSchema();
-  }
+  globalForPg.salonSchemaReady = setupSchema();
 
   return globalForPg.salonSchemaReady;
 }
@@ -118,6 +137,29 @@ async function setupSchema() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       customer_id INTEGER NOT NULL REFERENCES customers(id),
       service_id INTEGER NOT NULL REFERENCES services(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS works (
+      id SERIAL PRIMARY KEY,
+      title TEXT NOT NULL,
+      category TEXT NOT NULL,
+      customer_name TEXT,
+      notes TEXT,
+      before_image_url TEXT,
+      after_image_url TEXT,
+      completed_at DATE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS offers (
+      id SERIAL PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      price_label TEXT NOT NULL,
+      starts_on DATE,
+      ends_on DATE,
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
 
@@ -304,6 +346,307 @@ export async function listServices() {
     durationMinutes: row.duration_minutes,
     isActive: row.is_active,
   }));
+}
+
+export async function createService(input: {
+  name: string;
+  description?: string | null;
+  priceCents: number;
+  durationMinutes: number;
+}) {
+  await ensureSchema();
+
+  const result = await pool.query<{
+    id: number;
+    name: string;
+    description: string | null;
+    price_cents: number;
+    duration_minutes: number;
+    is_active: boolean;
+  }>(
+    `INSERT INTO services (name, description, price_cents, duration_minutes)
+    VALUES ($1, $2, $3, $4)
+    RETURNING id, name, description, price_cents, duration_minutes, is_active`,
+    [input.name, input.description ?? null, input.priceCents, input.durationMinutes],
+  );
+
+  const row = result.rows[0];
+
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    priceCents: row.price_cents,
+    durationMinutes: row.duration_minutes,
+    isActive: row.is_active,
+  };
+}
+
+export async function updateService(
+  id: number,
+  input: {
+    name: string;
+    description?: string | null;
+    priceCents: number;
+    durationMinutes: number;
+  },
+) {
+  await ensureSchema();
+
+  const result = await pool.query<{
+    id: number;
+    name: string;
+    description: string | null;
+    price_cents: number;
+    duration_minutes: number;
+    is_active: boolean;
+  }>(
+    `UPDATE services
+    SET name = $2, description = $3, price_cents = $4, duration_minutes = $5, is_active = TRUE
+    WHERE id = $1
+    RETURNING id, name, description, price_cents, duration_minutes, is_active`,
+    [id, input.name, input.description ?? null, input.priceCents, input.durationMinutes],
+  );
+
+  if ((result.rowCount ?? 0) === 0) {
+    throw new Error("El servicio no existe.");
+  }
+
+  const row = result.rows[0];
+
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    priceCents: row.price_cents,
+    durationMinutes: row.duration_minutes,
+    isActive: row.is_active,
+  };
+}
+
+export async function deleteService(id: number) {
+  await ensureSchema();
+
+  const appointmentCount = await pool.query<{ count: string }>(
+    "SELECT COUNT(*) AS count FROM appointments WHERE service_id = $1",
+    [id],
+  );
+
+  const hasAppointments = Number(appointmentCount.rows[0].count) > 0;
+  const result = hasAppointments
+    ? await pool.query("UPDATE services SET is_active = FALSE WHERE id = $1", [id])
+    : await pool.query("DELETE FROM services WHERE id = $1", [id]);
+
+  if ((result.rowCount ?? 0) === 0) {
+    throw new Error("El servicio no existe.");
+  }
+}
+
+export async function listWorks() {
+  await ensureSchema();
+
+  const result = await pool.query<{
+    id: number;
+    title: string;
+    category: string;
+    customer_name: string | null;
+    notes: string | null;
+    before_image_url: string | null;
+    after_image_url: string | null;
+    completed_at: Date | null;
+  }>(
+    `SELECT id, title, category, customer_name, notes, before_image_url, after_image_url, completed_at
+    FROM works
+    ORDER BY created_at DESC, id DESC`,
+  );
+
+  return result.rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    category: row.category,
+    customerName: row.customer_name,
+    notes: row.notes,
+    beforeImageUrl: row.before_image_url,
+    afterImageUrl: row.after_image_url,
+    completedAt: row.completed_at ? row.completed_at.toISOString().slice(0, 10) : null,
+  }));
+}
+
+export async function createWork(input: {
+  title: string;
+  category: string;
+  customerName?: string | null;
+  notes?: string | null;
+  beforeImageUrl?: string | null;
+  afterImageUrl?: string | null;
+  completedAt?: string | null;
+}) {
+  await ensureSchema();
+
+  const result = await pool.query<{ id: number }>(
+    `INSERT INTO works (title, category, customer_name, notes, before_image_url, after_image_url, completed_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
+    RETURNING id`,
+    [
+      input.title,
+      input.category,
+      input.customerName ?? null,
+      input.notes ?? null,
+      input.beforeImageUrl ?? null,
+      input.afterImageUrl ?? null,
+      input.completedAt || null,
+    ],
+  );
+
+  return (await listWorks()).find((work) => work.id === result.rows[0].id);
+}
+
+export async function updateWork(
+  id: number,
+  input: {
+    title: string;
+    category: string;
+    customerName?: string | null;
+    notes?: string | null;
+    beforeImageUrl?: string | null;
+    afterImageUrl?: string | null;
+    completedAt?: string | null;
+  },
+) {
+  await ensureSchema();
+
+  const result = await pool.query(
+    `UPDATE works
+    SET title = $2, category = $3, customer_name = $4, notes = $5,
+      before_image_url = $6, after_image_url = $7, completed_at = $8
+    WHERE id = $1`,
+    [
+      id,
+      input.title,
+      input.category,
+      input.customerName ?? null,
+      input.notes ?? null,
+      input.beforeImageUrl ?? null,
+      input.afterImageUrl ?? null,
+      input.completedAt || null,
+    ],
+  );
+
+  if ((result.rowCount ?? 0) === 0) {
+    throw new Error("El trabajo no existe.");
+  }
+
+  return (await listWorks()).find((work) => work.id === id);
+}
+
+export async function deleteWork(id: number) {
+  await ensureSchema();
+
+  const result = await pool.query("DELETE FROM works WHERE id = $1", [id]);
+
+  if ((result.rowCount ?? 0) === 0) {
+    throw new Error("El trabajo no existe.");
+  }
+}
+
+export async function listOffers() {
+  await ensureSchema();
+
+  const result = await pool.query<{
+    id: number;
+    title: string;
+    description: string;
+    price_label: string;
+    starts_on: Date | null;
+    ends_on: Date | null;
+    is_active: boolean;
+  }>(
+    `SELECT id, title, description, price_label, starts_on, ends_on, is_active
+    FROM offers
+    ORDER BY is_active DESC, created_at DESC, id DESC`,
+  );
+
+  return result.rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    priceLabel: row.price_label,
+    startsOn: row.starts_on ? row.starts_on.toISOString().slice(0, 10) : null,
+    endsOn: row.ends_on ? row.ends_on.toISOString().slice(0, 10) : null,
+    isActive: row.is_active,
+  }));
+}
+
+export async function createOffer(input: {
+  title: string;
+  description: string;
+  priceLabel: string;
+  startsOn?: string | null;
+  endsOn?: string | null;
+  isActive: boolean;
+}) {
+  await ensureSchema();
+
+  const result = await pool.query<{ id: number }>(
+    `INSERT INTO offers (title, description, price_label, starts_on, ends_on, is_active)
+    VALUES ($1, $2, $3, $4, $5, $6)
+    RETURNING id`,
+    [
+      input.title,
+      input.description,
+      input.priceLabel,
+      input.startsOn || null,
+      input.endsOn || null,
+      input.isActive,
+    ],
+  );
+
+  return (await listOffers()).find((offer) => offer.id === result.rows[0].id);
+}
+
+export async function updateOffer(
+  id: number,
+  input: {
+    title: string;
+    description: string;
+    priceLabel: string;
+    startsOn?: string | null;
+    endsOn?: string | null;
+    isActive: boolean;
+  },
+) {
+  await ensureSchema();
+
+  const result = await pool.query(
+    `UPDATE offers
+    SET title = $2, description = $3, price_label = $4, starts_on = $5, ends_on = $6, is_active = $7
+    WHERE id = $1`,
+    [
+      id,
+      input.title,
+      input.description,
+      input.priceLabel,
+      input.startsOn || null,
+      input.endsOn || null,
+      input.isActive,
+    ],
+  );
+
+  if ((result.rowCount ?? 0) === 0) {
+    throw new Error("La oferta no existe.");
+  }
+
+  return (await listOffers()).find((offer) => offer.id === id);
+}
+
+export async function deleteOffer(id: number) {
+  await ensureSchema();
+
+  const result = await pool.query("DELETE FROM offers WHERE id = $1", [id]);
+
+  if ((result.rowCount ?? 0) === 0) {
+    throw new Error("La oferta no existe.");
+  }
 }
 
 export async function listAppointments() {
