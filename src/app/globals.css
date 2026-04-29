@@ -94,6 +94,104 @@ button:disabled {
   padding: 32px 0;
 }
 
+.entry-shell,
+.client-shell {
+  width: min(1120px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 32px 0;
+}
+
+.entry-shell {
+  align-items: center;
+  display: flex;
+  min-height: 100vh;
+}
+
+.entry-shell > section {
+  width: 100%;
+}
+
+.entry-shell h1,
+.client-hero h1 {
+  margin-bottom: 16px;
+}
+
+.entry-shell p,
+.client-hero p {
+  color: var(--muted);
+  max-width: 680px;
+}
+
+.entry-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(240px, 1fr));
+  gap: 16px;
+  margin-top: 28px;
+}
+
+.entry-card {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  padding: 22px;
+}
+
+.entry-card:hover {
+  border-color: var(--accent);
+}
+
+.entry-card span {
+  color: var(--rose);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.entry-card strong {
+  font-size: 1.25rem;
+}
+
+.entry-card small {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.client-hero {
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 28px;
+  padding-bottom: 24px;
+}
+
+.client-section {
+  margin-top: 28px;
+}
+
+.booking-panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 22px;
+}
+
+.client-booking-form {
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  margin-top: 18px;
+}
+
+.client-booking-form label:last-of-type,
+.client-booking-form .form-error,
+.client-booking-form .form-success,
+.client-booking-form button {
+  grid-column: 1 / -1;
+}
+
+.form-success {
+  color: var(--accent-strong);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
 .topbar {
   display: flex;
   align-items: flex-end;
@@ -486,6 +584,8 @@ h1 {
 
   .dashboard-grid,
   .management-grid,
+  .entry-actions,
+  .client-booking-form,
   .service-strip,
   .service-grid,
   .category-grid,

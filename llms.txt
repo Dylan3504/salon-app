@@ -1,0 +1,112 @@
+# Salon App - LLM Project Context
+
+## Purpose
+
+This is a learning full-stack app for a beauty salon. It is being built iteratively to teach frontend, backend/API, PostgreSQL, routing, roles, and business rules.
+
+## Current Architecture
+
+- Framework: Next.js App Router with TypeScript.
+- Frontend: React client components.
+- Backend/API: Next.js route handlers under `src/app/api`.
+- Database: PostgreSQL using the `pg` package directly.
+- Local project root: `D:\salon`.
+- npm cache: `D:\salon\.npm-cache`.
+- temp scripts: `D:\salon\.tmp`.
+
+## Main Routes
+
+- `/`: temporary entry screen to choose Admin or Client.
+- `/admin`: owner/admin panel.
+- `/client`: client portal.
+
+## Roles
+
+There are currently two conceptual roles:
+
+- Admin/owner: can manage appointments, customers, services, works, and offers.
+- Client: can see public services, active offers, works, and request an appointment.
+
+Authentication is not implemented yet. The current role split is by route only, not secure auth.
+
+## Important Files
+
+- `src/app/page.tsx`: temporary role entry page.
+- `src/app/admin/page.tsx`: renders the admin dashboard.
+- `src/app/client/page.tsx`: renders the client portal.
+- `src/app/components/SalonDashboard.tsx`: admin UI with tabs.
+- `src/app/components/ClientPortal.tsx`: public/client UI.
+- `src/app/components/AppointmentForm.tsx`: admin appointment form.
+- `src/app/components/CustomerForm.tsx`: admin customer create/edit form.
+- `src/lib/db.ts`: PostgreSQL connection, schema creation, SQL queries, business rules.
+- `database/schema.sql`: reference SQL schema.
+- `.env.example`: example `DATABASE_URL`.
+
+## API Routes
+
+Admin/internal-ish:
+
+- `GET /api/dashboard`: returns customers, services, appointments, works, offers.
+- `GET/POST /api/customers`
+- `PATCH/DELETE /api/customers/[id]`
+- `GET/POST /api/appointments`
+- `PATCH/DELETE /api/appointments/[id]`
+- `GET/POST /api/services`
+- `PATCH/DELETE /api/services/[id]`
+- `GET/POST /api/works`
+- `PATCH/DELETE /api/works/[id]`
+- `GET/POST /api/offers`
+- `PATCH/DELETE /api/offers/[id]`
+
+Public/client:
+
+- `GET /api/public`: returns only services, works, and offers.
+- `POST /api/public/appointments`: client appointment request. It creates or reuses a customer by phone, then creates an appointment.
+
+## Database Tables
+
+- `customers`: name, phone, notes.
+- `services`: name, description, approximate starting price, duration, active flag.
+- `appointments`: starts_at, status, notes, customer_id, service_id.
+- `works`: portfolio records for color, alisados, canas, before/after, etc.
+- `offers`: public promotions with active flag.
+
+## Business Rules
+
+- Appointment prices are displayed as "Desde ..." because prices are approximate.
+- Appointments cannot be created in the past.
+- Active appointments cannot overlap. Overlap uses service duration.
+- Cancelled appointments do not block schedule time.
+- Reactivating a cancelled appointment re-checks schedule conflict.
+- Customers with appointment history cannot be deleted.
+- Services used in appointments are deactivated instead of deleted, preserving history.
+- Client portal must not expose customer list or full internal appointment list.
+
+## Verification Commands
+
+Use these from `D:\salon`:
+
+```powershell
+npm.cmd run lint
+npm.cmd run build
+```
+
+Run the dev server:
+
+```powershell
+npm.cmd run dev
+```
+
+Open:
+
+- `http://localhost:3000/`
+- `http://localhost:3000/admin`
+- `http://localhost:3000/client`
+
+## Current Next Steps
+
+- Add real authentication and protect `/admin` and admin APIs.
+- Replace client booking name/phone fields with logged-in profile data.
+- Add "my appointments" for the logged-in client.
+- Improve client booking flow with pending/confirmed states.
+- Add image upload for works instead of URL fields.

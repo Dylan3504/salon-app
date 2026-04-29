@@ -277,6 +277,21 @@ export async function createCustomer(input: {
   return result.rows[0];
 }
 
+export async function findCustomerByPhone(phone: string) {
+  await ensureSchema();
+
+  const result = await pool.query<Customer>(
+    `SELECT id, name, phone, notes
+    FROM customers
+    WHERE phone = $1
+    ORDER BY id ASC
+    LIMIT 1`,
+    [phone],
+  );
+
+  return result.rows[0] ?? null;
+}
+
 export async function updateCustomer(
   id: number,
   input: {
